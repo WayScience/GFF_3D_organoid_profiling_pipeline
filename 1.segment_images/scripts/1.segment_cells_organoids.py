@@ -70,7 +70,9 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 
 else:
-    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
+        strict=True
+    )
     window_size = 3
     clip_limit = 0.1
 
@@ -198,7 +200,7 @@ model_name = "cyto3"
 model = models.Cellpose(model_type=model_name, gpu=use_GPU)
 
 channels = [[1, 3]]  # channels=[red cells, blue nuclei]
-diameter = 150
+diameter = 200
 
 masks_all_dict = {"masks": [], "imgs": []}
 imgs = np.array(imgs)
@@ -225,7 +227,9 @@ imgs = masks_all_dict["imgs"]
 # reverse sliding window max projection
 full_mask_z_stack = []
 reconstruction_dict = {index: [] for index in range(original_cyto_z_count)}
-print(f"Decoupling the sliding window max projection of {window_size} slices")
+print(
+    f"Decoupling {len(masks_all)} max slices with the sliding window max projection of {window_size} slices"
+)
 
 # decouple the sliding window max projection based on window size
 # each slice in a stack
@@ -240,7 +244,7 @@ for z_stack_mask_index in range(len(masks_all)):
             reconstruction_dict[z_stack_mask_index + z_window_index].append(
                 z_stack_mask
             )
-
+print(f"Saving the decoupled masks of size {len(reconstruction_dict)}")
 # save the reconstruction_dict to a file for downstream decoupling
 np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
 
@@ -249,14 +253,22 @@ np.save(mask_path / "cell_reconstruction_dict.npy", reconstruction_dict)
 
 
 if in_notebook:
-    # masks, flows, styles, diams
     plot = plt.figure(figsize=(10, 5))
     for z in range(len(masks_all)):
         plt.figure(figsize=(10, 10))
-        plt.subplot(121)
+        plt.subplot(131)
         plt.imshow(imgs[z], cmap="gray")
         plt.title(f"raw: {z}")
-        plt.subplot(122)
-        plt.imshow(masks_all[z], cmap="gray")
+        plt.axis("off")
+
+        plt.subplot(132)
+        plt.imshow(masks_all[z])
         plt.title(f"mask: {z}")
+        plt.axis("off")
+
+        plt.subplot(133)
+        plt.imshow(imgs[z])
+        plt.imshow(masks_all[z], alpha=0.5)
+        plt.title(f"overlay: {z}")
+        plt.axis("off")
         plt.show()

@@ -25,7 +25,9 @@ overwrite = True
 
 # set path to the processed data dir
 processed_data_dir = pathlib.Path("../processed_data").resolve(strict=True)
-normalized_data_dir = pathlib.Path("../../data/normalized_z").resolve(strict=True)
+normalized_data_dir = pathlib.Path("../../data/NF0014/normalized_z").resolve(
+    strict=True
+)
 # normalized_data_dir = pathlib.Path("../../data/test_dir").resolve(strict=True)
 cellprofiler_dir = pathlib.Path("../../data/cellprofiler").resolve()
 if cellprofiler_dir.exists():
@@ -51,7 +53,7 @@ print(
       """
 )
 for file in processed_data_dir_directories:
-    check_number_of_files(file, 5)
+    check_number_of_files(file, 6)
 
 
 print(
@@ -68,7 +70,7 @@ for file in normalized_data_dir_directories:
 
 # ## Copy the normalized images to the cellprofiler images dir
 
-# In[5]:
+# In[ ]:
 
 
 # get the list of dirs in the normalized_data_dir
@@ -87,7 +89,7 @@ for norm_dir in tqdm.tqdm(norm_dirs):
 
 # ## Copy files from processed dir to cellprofiler images dir
 
-# In[6]:
+# In[ ]:
 
 
 # get a list of dirs in processed_data
@@ -109,14 +111,30 @@ for well_dir in tqdm.tqdm(dirs):
 
 
 jobs_to_rerun_path = pathlib.Path("../rerun_jobs.txt").resolve()
+if jobs_to_rerun_path.exists():
+    jobs_to_rerun_path.unlink()
 
 
-# In[8]:
+# In[ ]:
 
 
 dirs_in_cellprofiler_dir = [x for x in cellprofiler_dir.iterdir() if x.is_dir()]
 dirs_in_cellprofiler_dir = sorted(dirs_in_cellprofiler_dir)
 for dir in tqdm.tqdm(dirs_in_cellprofiler_dir):
-    if not check_number_of_files(dir, 8):
+    if not check_number_of_files(dir, 9):
         with open(jobs_to_rerun_path, "a") as f:
             f.write(f"{dir.name}\n")
+
+
+# In[9]:
+
+
+# move an example to the example dir
+example_dir = pathlib.Path("../processed_data/C4-2/gifs/").resolve(strict=True)
+final_example_dir = pathlib.Path("../examples/segmentation_output/C4-2/gifs").resolve()
+if final_example_dir.exists():
+    shutil.rmtree(final_example_dir)
+
+
+if example_dir.exists():
+    shutil.copytree(example_dir, final_example_dir)

@@ -70,8 +70,10 @@ if not in_notebook:
     input_dir = pathlib.Path(args.input_dir).resolve(strict=True)
 
 else:
-    input_dir = pathlib.Path("../../data/z-stack_images/C4-2/").resolve(strict=True)
-    window_size = 3
+    input_dir = pathlib.Path("../../data/NF0014/zstack_images/C4-2/").resolve(
+        strict=True
+    )
+    window_size = 5
     clip_limit = 0.1
 
 mask_path = pathlib.Path(f"../processed_data/{input_dir.stem}").resolve()
@@ -116,7 +118,7 @@ original_cyto_image = cyto.copy()
 original_cyto_z_count = cyto.shape[0]
 
 
-# In[5]:
+# In[ ]:
 
 
 # make a 2.5 D max projection image stack with a sliding window of 3 slices
@@ -125,9 +127,9 @@ for image_index in range(cyto.shape[0]):
     image_stack_window = cyto[image_index : image_index + window_size]
     if not image_stack_window.shape[0] == window_size:
         break
-    # guassian blur the image stack
+    # guassian blur the image stack to smooth the global intensity
     image_stack_window = skimage.filters.gaussian(image_stack_window, sigma=1)
-    # max project the image stack
+    # max project the image stack for the sliding window
     image_stack_2_5D = np.append(
         image_stack_2_5D, np.max(image_stack_window, axis=0)[np.newaxis, :, :], axis=0
     )
@@ -154,7 +156,7 @@ if in_notebook:
     plt.axis("off")
     plt.subplot(122)
     plt.imshow(imgs[9, :, :], cmap="gray")
-    plt.title(f"Butterworth filtered cyto")
+    plt.title("Butterworth filtered cyto")
     plt.axis("off")
     plt.show()
 
@@ -162,29 +164,12 @@ if in_notebook:
 # In[6]:
 
 
-# if in_notebook:
-#     # plot the nuclei and the cyto channels
-#     plt.figure(figsize=(10, 10))
-#     plt.subplot(121)
-#     plt.imshow(cyto[9, :, :], cmap="gray")
-#     plt.title("Raw cyto")
-#     plt.axis("off")
-#     plt.subplot(122)
-#     plt.imshow(imgs[9, :, :], cmap="gray")
-#     plt.title(f"Gaussian blur: sigma {sigma}")
-#     plt.axis("off")
-#     plt.show()
-
-
-# In[7]:
-
-
 use_GPU = torch.cuda.is_available()
 # Load the model
 model_name = "cyto3"
 model = models.CellposeModel(gpu=use_GPU, model_type=model_name)
 
-# Perform segmentation
+# Perform segmentation of whole organoids
 labels, details, _ = model.eval(
     imgs,
     channels=[0, 0],
@@ -194,7 +179,7 @@ labels, details, _ = model.eval(
 )
 
 
-# In[8]:
+# In[7]:
 
 
 # reverse sliding window max projection
@@ -215,18 +200,11 @@ for z_stack_mask_index in range(len(labels)):
             reconstruction_dict[z_stack_mask_index + z_window_index].append(
                 z_stack_mask
             )
-# for each z stack index, reconstruct the mask
-for z_stack_index in range(original_cyto_z_count):
-    mask = np.max(reconstruction_dict[z_stack_index], axis=0)
-    full_mask_z_stack.append(mask)
-
-full_mask_z_stack = np.array(full_mask_z_stack)
-
-# save the reconstructed image stack to a tiff file
-tifffile.imsave(mask_path / "organoid_mask.tiff", full_mask_z_stack)
+# save the reconstruction_dict to a file for downstream decoupling
+np.save(mask_path / "organoid_reconstruction_dict.npy", reconstruction_dict)
 
 
-# In[9]:
+# In[8]:
 
 
 if in_notebook:
@@ -238,6 +216,6 @@ if in_notebook:
         plt.imshow(imgs[z], cmap="gray")
         plt.title(f"raw: {z}")
         plt.subplot(122)
-        plt.imshow(labels[z], cmap="gray")
+        plt.imshow(labels[z])
         plt.title(f"mask: {z}")
         plt.show()
